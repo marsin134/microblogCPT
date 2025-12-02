@@ -1,6 +1,8 @@
 package config
 
 import (
+	"github.com/joho/godotenv"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -23,15 +25,15 @@ type Config struct {
 	RefreshTokenDuration time.Duration
 }
 
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
+func getEnv(key string, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
-	return fallback
+	return defaultValue
 }
 
 func getEnvAsInt(key string, defaultValue int) int {
-	if value, exists := os.LookupEnv(key); exists {
+	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
 		}
@@ -59,6 +61,11 @@ func LoadDB() DB {
 }
 
 func LoadConfig() *Config {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+
 	return &Config{
 		ServerPort:           getEnvAsInt("SERVER_PORT", 8080),
 		DB:                   LoadDB(),
