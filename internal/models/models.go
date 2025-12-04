@@ -13,6 +13,12 @@ type User struct {
 	RefreshTokenExpiryTime time.Time `json:"refreshTokenExpiryTime" db:"refresh_token_expiry_time"`
 }
 
+type CreateUserRequest struct {
+	Email    string `json:"email" db:"email"`
+	Password string `json:"password" db:"password"`
+	Role     string `json:"role" db:"role"`
+}
+
 type Post struct {
 	PostID         string    `json:"postId" db:"post_id"`
 	AuthorID       string    `json:"authorId" db:"author_id"`
