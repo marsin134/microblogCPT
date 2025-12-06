@@ -17,12 +17,16 @@ func main() {
 		log.Fatal("JWT_SECRET_KEY не установлен в .env файле")
 	}
 
-	// Подключаемся к БД
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
 		log.Fatalf("Не удалось подключиться к БД: %v", err)
 	}
 	defer database.MethodsDB.CloseDB(db)
+
+	err = db.RunMigrations("migrations/001_create_tables.sql")
+	if err != nil {
+		log.Printf("Внимание: ошибка при применении миграций: %v", err)
+	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Микроблог запущен!\n")

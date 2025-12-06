@@ -100,3 +100,7 @@ func (db *DB) HealthCheck() error {
 func (db *DB) GetDB() *DB {
 	return db
 }
+
+// psql -h localhost -U postgres
+// \c microblog
+// SELECT * FROM users;
