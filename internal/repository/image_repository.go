@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"microblogCPT/internal/models"
 	"time"
@@ -13,11 +14,19 @@ type ImageRepositoryImpl struct {
 	db *sqlx.DB
 }
 
+func NewImageRepository(db *sqlx.DB) *ImageRepositoryImpl {
+	return &ImageRepositoryImpl{db: db}
+}
+
 func (r *ImageRepositoryImpl) Create(ctx context.Context, image *models.Image) error {
 	query := `
 		INSERT INTO images (image_id, post_id, image_url, created_at)
 		VALUES (:image_id, :post_id, :image_url, :created_at)
 	`
+
+	if image.ImageID == "" {
+		image.ImageID = uuid.New().String()
+	}
 
 	if image.CreatedAt.IsZero() {
 		image.CreatedAt = time.Now()
@@ -29,6 +38,18 @@ func (r *ImageRepositoryImpl) Create(ctx context.Context, image *models.Image) e
 	}
 
 	return nil
+}
+
+func (r *ImageRepositoryImpl) GetByImageID(ctx context.Context, imageID string) (*models.Image, error) {
+	query := `SELECT * FROM images WHERE image_id = $1 ORDER BY created_at`
+
+	var image *models.Image
+	err := r.db.SelectContext(ctx, &image, query, imageID)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка получения изображения: %w", err)
+	}
+
+	return image, nil
 }
 
 func (r *ImageRepositoryImpl) GetByPostID(ctx context.Context, postID string) ([]*models.Image, error) {

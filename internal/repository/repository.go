@@ -20,8 +20,6 @@ type UserRepository interface {
 type PostRepository interface {
 	Create(ctx context.Context, post *models.Post) error
 	GetByID(ctx context.Context, postID string) (*models.Post, error)
-	GetByAuthorID(ctx context.Context, authorID string, status string) ([]*models.Post, error)
-	GetAllPublished(ctx context.Context, limit, offset int) ([]*models.Post, error)
 	Update(ctx context.Context, post *models.Post) error
 	Delete(ctx context.Context, postID string) error
 	Publish(ctx context.Context, postID string) error
@@ -30,6 +28,7 @@ type PostRepository interface {
 
 type ImageRepository interface {
 	Create(ctx context.Context, image *models.Image) error
+	GetByImageID(ctx context.Context, imageID string) (*models.Image, error)
 	GetByPostID(ctx context.Context, postID string) ([]*models.Image, error)
 	Delete(ctx context.Context, imageID string) error
 	DeleteByPostID(ctx context.Context, postID string) error

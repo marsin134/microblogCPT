@@ -13,22 +13,16 @@ type User struct {
 	RefreshTokenExpiryTime time.Time `json:"refreshTokenExpiryTime" db:"refresh_token_expiry_time"`
 }
 
-type CreateUserRequest struct {
-	Email    string `json:"email" db:"email"`
-	Password string `json:"password" db:"password"`
-	Role     string `json:"role" db:"role"`
-}
-
 type Post struct {
 	PostID         string    `json:"postId" db:"post_id"`
 	AuthorID       string    `json:"authorId" db:"author_id"`
-	IdempotencyKey string    `json:"idempotencyKey" db:"idempotency_key"`
+	IdempotencyKey *string   `json:"idempotencyKey,omitempty" db:"idempotency_key"`
 	Title          string    `json:"title" db:"title"`
 	Content        string    `json:"content" db:"content"`
+	Status         string    `json:"status" db:"status"`
 	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt      time.Time `json:"updatedAt" db:"updated_at"`
-	Status         string    `json:"status" db:"status"`
-	Images         []Image   `json:"images" db:"-"`
+	Images         []Image   `json:"images,omitempty" db:"-"`
 }
 
 type Image struct {

@@ -102,5 +102,12 @@ func (db *DB) GetDB() *DB {
 }
 
 // psql -h localhost -U postgres
+// psql -h localhost -U postgres -d microblog
+// psql -h localhost -U postgres -d microblog -c "\dt"
+// psql -h localhost -U postgres -d microblog -f migrations/001_create_tables.sql
 // \c microblog
 // SELECT * FROM users;
+// SELECT * FROM posts;
+// SELECT * FROM images;
+// DROP DATABASE IF EXISTS microblog;
+// CREATE DATABASE microblog;

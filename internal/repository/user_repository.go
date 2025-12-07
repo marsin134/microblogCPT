@@ -12,19 +12,14 @@ import (
 	"time"
 )
 
-type UserRepository interface {
-	CreateUser(ctx context.Context, user *models.User, password string) error
-	GetUserByID(ctx context.Context, userID string) (*models.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
-	UpdateUser(ctx context.Context, user *models.User) error
-	DeleteUser(ctx context.Context, userID string) error
-	VerifyPassword(ctx context.Context, email, password string) (*models.User, error)
-	UpdateRefreshToken(ctx context.Context, userID, refreshToken string, expiryTime time.Time) error
-	GetUserByRefreshToken(ctx context.Context, refreshToken string) (*models.User, error)
-}
-
 type userRepository struct {
 	db *sqlx.DB
+}
+
+type CreateUserRequest struct {
+	Email    string `json:"email" db:"email"`
+	Password string `json:"password" db:"password"`
+	Role     string `json:"role" db:"role"`
 }
 
 func NewUserRepository(db *sqlx.DB) UserRepository {
