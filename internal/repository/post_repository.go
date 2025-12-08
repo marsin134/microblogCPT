@@ -25,9 +25,9 @@ type CreatePostRequest struct {
 }
 
 type UpdatePostRequest struct {
-	AuthorID string `json:"author_id"`
-	Title    string `json:"title"`
-	Content  string `json:"content"`
+	PostID  string `json:"post_id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 func NewPostRepository(db *sqlx.DB) *PostRepositoryImpl {
@@ -89,6 +89,42 @@ func (r *PostRepositoryImpl) GetByID(ctx context.Context, postID string) (*model
 	}
 
 	return &post, nil
+}
+
+func (r *PostRepositoryImpl) GetByUserID(ctx context.Context, userID string) ([]models.Post, error) {
+	query := `
+        SELECT * FROM posts 
+        WHERE author_id = $1
+    `
+
+	var posts []models.Post
+	err := r.db.GetContext(ctx, &posts, query, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("пост пользователя %s не найден", userID)
+		}
+		return nil, fmt.Errorf("ошибка при получении поста: %w", err)
+	}
+
+	return posts, nil
+}
+
+func (r *PostRepositoryImpl) GetPublishPosts(ctx context.Context) ([]models.Post, error) {
+	query := `
+        SELECT * FROM posts 
+        WHERE status = 'Published'
+    `
+
+	var posts []models.Post
+	err := r.db.GetContext(ctx, &posts, query)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("пост пользователя %s не найден")
+		}
+		return nil, fmt.Errorf("ошибка при получении поста: %w", err)
+	}
+
+	return posts, nil
 }
 
 func (r *PostRepositoryImpl) Update(ctx context.Context, post *models.Post) error {

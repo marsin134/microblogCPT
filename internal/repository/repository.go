@@ -20,6 +20,8 @@ type UserRepository interface {
 type PostRepository interface {
 	Create(ctx context.Context, post *models.Post) error
 	GetByID(ctx context.Context, postID string) (*models.Post, error)
+	GetByUserID(ctx context.Context, userID string) ([]models.Post, error)
+	GetPublishPosts(ctx context.Context) ([]models.Post, error)
 	Update(ctx context.Context, post *models.Post) error
 	Delete(ctx context.Context, postID string) error
 	Publish(ctx context.Context, postID string) error

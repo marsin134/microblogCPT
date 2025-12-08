@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	UserID                 string    `json:"userId" db:"user_id"`
+	UserID                 string    `json:"userID" db:"user_id"`
 	Email                  string    `json:"email" db:"email"`
 	PasswordHash           string    `json:"passwordHash" db:"password_hash"`
 	Role                   string    `json:"role" db:"role"`
@@ -14,8 +14,8 @@ type User struct {
 }
 
 type Post struct {
-	PostID         string    `json:"postId" db:"post_id"`
-	AuthorID       string    `json:"authorId" db:"author_id"`
+	PostID         string    `json:"postID" db:"post_id"`
+	AuthorID       string    `json:"authorID" db:"author_id"`
 	IdempotencyKey *string   `json:"idempotencyKey,omitempty" db:"idempotency_key"`
 	Title          string    `json:"title" db:"title"`
 	Content        string    `json:"content" db:"content"`
@@ -26,8 +26,8 @@ type Post struct {
 }
 
 type Image struct {
-	ImageID   string    `json:"imageId" db:"image_id"`
-	PostID    string    `json:"postId" db:"post_id"`
+	ImageID   string    `json:"imageID" db:"image_id"`
+	PostID    string    `json:"postID" db:"post_id"`
 	ImageURL  string    `json:"imageUrl" db:"image_url"`
 	CreatedAt time.Time `json:"createdAt" db:"created_at"`
 }

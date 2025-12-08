@@ -17,9 +17,10 @@ type UserHandler struct {
 	validate    *validator.Validate
 }
 
-func NewUserHandler(userService service.UserService) *UserHandler {
+func NewUserHandler(userService service.UserService, userRepo repository.UserRepository) *UserHandler {
 	return &UserHandler{
 		userService: userService,
+		userRepo:    userRepo,
 		validate:    validator.New(),
 	}
 }
@@ -43,7 +44,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentUserRole, _ := r.Context().Value("userRole").(string)
+	currentUserRole, _ := r.Context().Value("role").(string)
 	if userID != currentUserID && currentUserRole != "Author" {
 		writeError(w, "Доступ запрещен", http.StatusForbidden)
 		return
