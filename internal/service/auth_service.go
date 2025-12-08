@@ -12,7 +12,7 @@ import (
 )
 
 type AuthService interface {
-	Register(ctx context.Context, req models.CreateUserRequest) (*models.User, error)
+	Register(ctx context.Context, req repository.CreateUserRequest) (*models.User, error)
 	Login(ctx context.Context, email, password string) (*models.User, string, string, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (*models.User, string, string, error)
 	ValidateToken(tokenString string) (*jwt.Token, error)
@@ -31,7 +31,7 @@ func NewAuthService(userRepo repository.UserRepository, cfg *config.Config) Auth
 	}
 }
 
-func (s *authService) Register(ctx context.Context, req models.CreateUserRequest) (*models.User, error) {
+func (s *authService) Register(ctx context.Context, req repository.CreateUserRequest) (*models.User, error) {
 	existingUser, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if err == nil && existingUser != nil {
 		return nil, fmt.Errorf("пользователь с email %s уже существует", req.Email)

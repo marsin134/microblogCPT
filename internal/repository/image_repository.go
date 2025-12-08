@@ -14,6 +14,11 @@ type ImageRepositoryImpl struct {
 	db *sqlx.DB
 }
 
+type CreateImageRequest struct {
+	PostID   string `json:"post_id"`
+	ImageURL string `json:"image_url"`
+}
+
 func NewImageRepository(db *sqlx.DB) *ImageRepositoryImpl {
 	return &ImageRepositoryImpl{db: db}
 }

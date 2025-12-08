@@ -17,6 +17,19 @@ type PostRepositoryImpl struct {
 	db *sqlx.DB
 }
 
+type CreatePostRequest struct {
+	AuthorID       string  `json:"author_id"`
+	IdempotencyKey *string `json:"idempotency_key"`
+	Title          string  `json:"title"`
+	Content        string  `json:"content"`
+}
+
+type UpdatePostRequest struct {
+	AuthorID string `json:"author_id"`
+	Title    string `json:"title"`
+	Content  string `json:"content"`
+}
+
 func NewPostRepository(db *sqlx.DB) *PostRepositoryImpl {
 	return &PostRepositoryImpl{db: db}
 }
