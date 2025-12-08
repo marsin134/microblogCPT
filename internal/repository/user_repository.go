@@ -17,9 +17,15 @@ type userRepository struct {
 }
 
 type CreateUserRequest struct {
-	Email    string `json:"email" db:"email"`
-	Password string `json:"password" db:"password"`
-	Role     string `json:"role" db:"role"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Role     string `json:"role"`
+}
+
+type UpdateUserRequest struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 }
 
 func NewUserRepository(db *sqlx.DB) UserRepository {
