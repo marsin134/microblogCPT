@@ -1,0 +1,681 @@
+openapi: 3.0.3
+info:
+  title: Microblog API
+  description: |
+    API для платформы микроблогов с аутентификацией, постами и изображениями
+    
+    ## Роли пользователей
+    - **Author** - может создавать и публиковать посты
+    - **Reader** - может только читать посты
+    
+    ## Авторизация
+    Используйте Bearer токен в заголовке Authorization:
+    ```
+    Authorization: Bearer YOUR_JWT_TOKEN
+    ```
+  version: 1.0.0
+  contact:
+    name: Microblog Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080/api
+    description: Локальный сервер разработки
+  - url: https://api.microblog.example.com/api
+    description: Продакшн сервер
+
+tags:
+  - name: Аутентификация
+    description: Регистрация, вход и управление токенами
+  - name: Пользователи
+    description: Управление пользователями
+  - name: Посты
+    description: Создание, редактирование и просмотр постов
+  - name: Изображения
+    description: Загрузка и управление изображениями к постам
+  - name: Система
+    description: Системные эндпоинты
+
+paths:
+  /auth/register:
+    post:
+      tags: [Аутентификация]
+      summary: Регистрация нового пользователя
+      description: Создание нового пользователя с ролью Author или Reader
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              author:
+                summary: Регистрация автора
+                value:
+                  email: author@example.com
+                  password: password123
+                  role: Author
+              reader:
+                summary: Регистрация читателя
+                value:
+                  email: reader@example.com
+                  password: password123
+                  role: Reader
+      responses:
+        200:
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        409:
+          $ref: '#/components/responses/Conflict'
+        500:
+          $ref: '#/components/responses/ServerError'
+
+  /auth/login:
+    post:
+      tags: [Аутентификация]
+      summary: Вход в систему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        200:
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh-token:
+    post:
+      tags: [Аутентификация]
+      summary: Обновление токенов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        200:
+          description: Токены успешно обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+
+  /me:
+    get:
+      tags: [Пользователи]
+      summary: Получить текущего пользователя
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Данные текущего пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /user/{userId}:
+    get:
+      tags: [Пользователи]
+      summary: Получить пользователя по ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Данные пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /posts:
+    get:
+      tags: [Посты]
+      summary: Получить список постов
+      description: |
+        Возвращает посты в зависимости от роли:
+        - Author: видит свои посты
+        - Reader: видит только опубликованные посты
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Номер страницы
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Количество постов на странице
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Список постов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostsResponse'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Посты]
+      summary: Создать новый пост
+      description: Только пользователи с ролью Author могут создавать посты
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+            examples:
+              basic:
+                summary: Базовый пост
+                value:
+                  title: "Мой первый пост"
+                  content: "Содержание моего первого поста..."
+              withIdempotency:
+                summary: Пост с ключом идемпотентности
+                value:
+                  idempotencyKey: "unique-key-123"
+                  title: "Пост с уникальным ключом"
+                  content: "Содержание..."
+      responses:
+        201:
+          description: Пост успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: Ключ идемпотентности уже использован
+
+  /posts/{postId}:
+    get:
+      tags: [Посты]
+      summary: Получить пост по ID
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Данные поста
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Посты]
+      summary: Обновить пост
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePostRequest'
+      responses:
+        200:
+          description: Пост успешно обновлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Пост успешно обновлен"
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /posts/{postId}/status:
+    patch:
+      tags: [Посты]
+      summary: Опубликовать пост
+      description: Изменяет статус поста на "Published"
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [Published]
+                  example: "Published"
+      responses:
+        200:
+          description: Пост опубликован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Пост успешно опубликован"
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /posts/{postId}/images:
+    post:
+      tags: [Изображения]
+      summary: Добавить изображение к посту
+      description: |
+        Загрузка изображения к посту. Поддерживаемые форматы:
+        - JPEG/JPG
+        - PNG
+        - GIF
+        - WebP
+        
+        Максимальный размер: 5MB
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        201:
+          description: Изображение успешно загружено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /posts/{postId}/images/{imageId}:
+    delete:
+      tags: [Изображения]
+      summary: Удалить изображение
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Изображение успешно удалено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Картинка успешно удалена"
+                  postId:
+                    type: string
+                    format: uuid
+                  imageId:
+                    type: string
+                    format: uuid
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Введите ваш JWT токен в формате:
+        ```
+        Bearer <your_token>
+        ```
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 6
+          maxLength: 100
+          example: "password123"
+          writeOnly: true
+        role:
+          type: string
+          enum: [Author, Reader]
+          example: "Author"
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "password123"
+          writeOnly: true
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access токен (действует 24 часа)
+        refreshToken:
+          type: string
+          description: Refresh токен для получения нового access токена
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    UserResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        role:
+          type: string
+          enum: [Author, Reader]
+          example: "Author"
+
+    CreatePostRequest:
+      type: object
+      required: [title, content]
+      properties:
+        idempotencyKey:
+          type: string
+          description: Уникальный ключ для предотвращения дублирования запросов
+          example: "unique-key-123"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Заголовок поста"
+        content:
+          type: string
+          minLength: 1
+          example: "Содержание поста..."
+
+    UpdatePostRequest:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Обновленный заголовок"
+        content:
+          type: string
+          minLength: 1
+          example: "Обновленное содержание..."
+
+    PostResponse:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: uuid
+        idempotencyKey:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [Draft, Published]
+        authorId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageResponse'
+
+    PostsResponse:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostResponse'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+
+    ImageResponse:
+      type: object
+      properties:
+        imageId:
+          type: string
+          format: uuid
+        postId:
+          type: string
+          format: uuid
+        imageUrl:
+          type: string
+          format: uri
+          description: URL для доступа к изображению
+        fileName:
+          type: string
+          example: "photo.jpg"
+        fileSize:
+          type: integer
+          description: Размер файла в байтах
+        mimeType:
+          type: string
+          example: "image/jpeg"
+        createdAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidEmail:
+              value:
+                error: "Неверный формат email"
+            missingField:
+              value:
+                error: "Отсутствует обязательное поле"
+
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Требуется авторизация"
+
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notAuthor:
+              value:
+                error: "Доступ запрещен. Требуется роль Автор"
+            notOwner:
+              value:
+                error: "Нет прав для выполнения операции"
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Пост не найден"
+
+    Conflict:
+      description: Конфликт данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Email уже существует"
+
+    ServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Произошла внутренняя ошибка"
