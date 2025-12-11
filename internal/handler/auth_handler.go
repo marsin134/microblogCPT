@@ -4,70 +4,95 @@ import (
 	"encoding/json"
 	"microblogCPT/internal/repository"
 	"net/http"
-
-	"microblogCPT/internal/service"
-
-	"github.com/go-playground/validator/v10"
+	"regexp"
+	"slices"
+	"strings"
+	"unicode/utf8"
 )
 
-type AuthHandler struct {
-	authService service.AuthService
-	validate    *validator.Validate
-}
-
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
-	return &AuthHandler{
-		authService: authService,
-		validate:    validator.New(),
-	}
-}
-
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6"`
-	Role     string `json:"role" validate:"required,oneof=Author Reader"`
+	Email    string `json:"email" Validate:"required,email"`
+	Password string `json:"password" Validate:"required,min=6"`
+	Role     string `json:"role" Validate:"required,oneof=Author Reader"`
 }
 
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
+	// check method
 	if r.Method != http.MethodPost {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Handler is not nil
+	if h == nil {
+		WriteError(w, "Handler is nil", http.StatusInternalServerError)
+		return
+	}
+
+	// present validate
+	if h.Validate == nil {
+		WriteError(w, "Validator is not initialized", http.StatusInternalServerError)
 		return
 	}
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "Неверный формат запроса", http.StatusBadRequest)
+		WriteError(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
 
-	// Валидация
-	if err := h.validate.Struct(req); err != nil {
-		writeError(w, "Неверный формат email", http.StatusBadRequest)
+	// email verification
+	patternEmail := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	matched, err := regexp.MatchString(patternEmail, req.Email)
+	if err != nil || !matched {
+		WriteError(w, "Неверный формат email", http.StatusBadRequest)
 		return
 	}
 
+	// password verification
+	if utf8.RuneCountInString(req.Password) < 6 {
+		WriteError(w, "Пароль должен быть не менее 6 символов", http.StatusBadRequest)
+		return
+	}
+
+	// role verification
+	roleSlice := []string{"Author", "Reader"}
+	if !slices.Contains(roleSlice, req.Role) {
+		WriteError(w, "Роль должна быть Author или Reader", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.Validate.Struct(req); err != nil {
+		WriteError(w, "Неверные данные", http.StatusBadRequest)
+		return
+	}
+
+	// creating a form to create user
 	serviceReq := repository.CreateUserRequest{
 		Email:    req.Email,
 		Password: req.Password,
 		Role:     req.Role,
 	}
 
-	user, err := h.authService.Register(r.Context(), serviceReq)
+	// registering a user in the service
+	user, err := h.AuthService.Register(r.Context(), serviceReq)
 	if err != nil {
-		if err.Error() == "пользователь с email "+req.Email+" уже существует" {
-			writeError(w, "Email уже существует", http.StatusForbidden)
+		if strings.Contains(err.Error(), "уже существует") {
+			WriteError(w, "Email уже существует", http.StatusForbidden)
 		} else {
-			writeError(w, err.Error(), http.StatusInternalServerError)
+			WriteError(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
-	user, accessToken, refreshToken, err := h.authService.Login(r.Context(), req.Email, req.Password)
-
+	// logging
+	user, accessToken, refreshToken, err := h.AuthService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeError(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
+	// forming the response
 	response := map[string]interface{}{
 		"accessToken":  accessToken,
 		"refreshToken": refreshToken,
@@ -83,9 +108,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
+	// check method
 	if r.Method != http.MethodPost {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -95,21 +121,27 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "Неверный формат запроса", http.StatusBadRequest)
+		WriteError(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
+	if err := h.Validate.Struct(req); err != nil {
+		if strings.Contains(err.Error(), "Email") {
+			WriteError(w, "Неверный формат email", http.StatusBadRequest)
+		} else {
+			WriteError(w, "Неверные данные", http.StatusBadRequest)
+		}
 		return
 	}
 
-	user, accessToken, refreshToken, err := h.authService.Login(r.Context(), req.Email, req.Password)
+	// logging
+	user, accessToken, refreshToken, err := h.AuthService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeError(w, "Неверный email или пароль", http.StatusForbidden)
+		WriteError(w, "Неверный email или пароль", http.StatusForbidden)
 		return
 	}
 
+	// forming the response
 	response := map[string]interface{}{
 		"accessToken":  accessToken,
 		"refreshToken": refreshToken,
@@ -125,29 +157,37 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	// check method
 	if r.Method != http.MethodPost {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req struct {
-		RefreshToken string `json:"refreshToken" validate:"required"`
+		RefreshToken string `json:"refreshToken" Validate:"required"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "Неверный формат запроса", http.StatusBadRequest)
+		WriteError(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
+	// token missing
+	if req.RefreshToken == "" {
+		WriteError(w, "Отсуствует refreshToken", http.StatusBadRequest)
 		return
 	}
 
-	user, accessToken, refreshToken, err := h.authService.RefreshTokens(r.Context(), req.RefreshToken)
+	if err := h.Validate.Struct(req); err != nil {
+		WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// update accessToken and refreshToken
+	user, accessToken, refreshToken, err := h.AuthService.RefreshTokens(r.Context(), req.RefreshToken)
 	if err != nil {
-		writeError(w, "Refresh Token истек или недействителен", http.StatusBadRequest)
+		WriteError(w, "Refresh Token истек или недействителен", http.StatusBadRequest)
 		return
 	}
 

@@ -32,16 +32,19 @@ func NewAuthService(userRepo repository.UserRepository, cfg *config.Config) Auth
 }
 
 func (s *authService) Register(ctx context.Context, req repository.CreateUserRequest) (*models.User, error) {
+	// get user by email
 	existingUser, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if err == nil && existingUser != nil {
 		return nil, fmt.Errorf("пользователь с email %s уже существует", req.Email)
 	}
 
+	// generate token
 	refreshToken, refreshTokenExpiry, err := s.generateRefreshToken()
 	if err != nil {
 		return nil, fmt.Errorf("ошибка генерации refresh token: %w", err)
 	}
 
+	// create user
 	user := &models.User{
 		Email:                  req.Email,
 		Role:                   req.Role,
@@ -58,11 +61,13 @@ func (s *authService) Register(ctx context.Context, req repository.CreateUserReq
 }
 
 func (s *authService) Login(ctx context.Context, email, password string) (*models.User, string, string, error) {
+	// get user by password
 	user, err := s.userRepo.VerifyPassword(ctx, email, password)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("ошибка аутентификации: %w", err)
 	}
 
+	// generate token
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("ошибка генерации access token: %w", err)
@@ -73,6 +78,7 @@ func (s *authService) Login(ctx context.Context, email, password string) (*model
 		return nil, "", "", fmt.Errorf("ошибка генерации refresh token: %w", err)
 	}
 
+	// update token
 	err = s.userRepo.UpdateRefreshToken(ctx, user.UserID, refreshToken, refreshTokenExpiry)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("ошибка сохранения refresh token: %w", err)
@@ -82,11 +88,13 @@ func (s *authService) Login(ctx context.Context, email, password string) (*model
 }
 
 func (s *authService) RefreshTokens(ctx context.Context, refreshToken string) (*models.User, string, string, error) {
+	// get user by token
 	user, err := s.userRepo.GetUserByRefreshToken(ctx, refreshToken)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("недействительный refresh token: %w", err)
 	}
 
+	// re-creation token
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("ошибка генерации access token: %w", err)
@@ -97,6 +105,7 @@ func (s *authService) RefreshTokens(ctx context.Context, refreshToken string) (*
 		return nil, "", "", fmt.Errorf("ошибка генерации refresh token: %w", err)
 	}
 
+	// update token
 	err = s.userRepo.UpdateRefreshToken(ctx, user.UserID, newRefreshToken, refreshTokenExpiry)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("ошибка обновления refresh token: %w", err)
@@ -107,11 +116,11 @@ func (s *authService) RefreshTokens(ctx context.Context, refreshToken string) (*
 
 func (s *authService) generateAccessToken(user *models.User) (string, error) {
 	claims := jwt.MapClaims{
-		"userId": user.UserID,
-		"email":  user.Email,
-		"role":   user.Role,
-		"exp":    time.Now().Add(s.cfg.AccessTokenDuration).Unix(),
-		"iat":    time.Now().Unix(),
+		"user_id": user.UserID,
+		"email":   user.Email,
+		"role":    user.Role,
+		"exp":     time.Now().Add(s.cfg.AccessTokenDuration).Unix(),
+		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

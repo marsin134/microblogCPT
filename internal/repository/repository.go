@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/jmoiron/sqlx"
 	"microblogCPT/internal/models"
 	"time"
 )
@@ -18,7 +19,7 @@ type UserRepository interface {
 }
 
 type PostRepository interface {
-	Create(ctx context.Context, post *models.Post) error
+	Create(ctx context.Context, post *models.Post, imagesURL []string) error
 	GetByID(ctx context.Context, postID string) (*models.Post, error)
 	GetByUserID(ctx context.Context, userID string) ([]models.Post, error)
 	GetPublishPosts(ctx context.Context) ([]models.Post, error)
@@ -34,4 +35,18 @@ type ImageRepository interface {
 	GetByPostID(ctx context.Context, postID string) ([]*models.Image, error)
 	Delete(ctx context.Context, imageID string) error
 	DeleteByPostID(ctx context.Context, postID string) error
+}
+
+type Repository struct {
+	User  UserRepository
+	Post  PostRepository
+	Image ImageRepository // Добавляем репозиторий изображений
+}
+
+func NewRepository(db *sqlx.DB) *Repository {
+	return &Repository{
+		User:  NewUserRepository(db),
+		Post:  NewPostRepository(db),
+		Image: NewImageRepository(db), // Инициализируем
+	}
 }

@@ -1,18 +1,18 @@
-package repository
+package testRepository
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"microblogCPT/internal/models"
-	"testing"
-	"time"
-
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"microblogCPT/internal/models"
+	"microblogCPT/internal/repository"
+	"testing"
+	"time"
 )
 
 func setupMockDB(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
@@ -28,10 +28,10 @@ func setupMockDB(t *testing.T) (*sqlx.DB, sqlmock.Sqlmock) {
 func TestNewPostRepository(t *testing.T) {
 	db, _ := setupMockDB(t)
 
-	repo := NewPostRepository(db)
+	repo := repository.NewPostRepository(db)
 
 	assert.NotNil(t, repo)
-	assert.Equal(t, db, repo.db)
+	assert.Equal(t, db, repo.DB)
 }
 
 func TestPostRepositoryImpl_Create(t *testing.T) {
@@ -147,7 +147,7 @@ func TestPostRepositoryImpl_Create(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectExec(`INSERT INTO posts`).
 					WithArgs(
-						sqlmock.AnyArg(), // ожидаем любой UUID
+						sqlmock.AnyArg(), // waiting for any UUID
 						"test-author-id",
 						"test-key",
 						"Test Title",
@@ -167,7 +167,7 @@ func TestPostRepositoryImpl_Create(t *testing.T) {
 			db, mock := setupMockDB(t)
 			tc.setupMock(mock)
 
-			repo := NewPostRepository(db)
+			repo := repository.NewPostRepository(db)
 
 			ctx := context.Background()
 			err := repo.Create(ctx, tc.post, tc.imagesURL)
@@ -264,7 +264,7 @@ func TestPostRepositoryImpl_GetByID(t *testing.T) {
 			db, mock := setupMockDB(t)
 			tc.setupMock(mock)
 
-			repo := NewPostRepository(db)
+			repo := repository.NewPostRepository(db)
 
 			ctx := context.Background()
 			post, err := repo.GetByID(ctx, tc.postID)
@@ -308,7 +308,7 @@ func TestPostRepositoryImpl_Update(t *testing.T) {
 				Status:   "Published",
 			},
 			setupMock: func(mock sqlmock.Sqlmock, post *models.Post) {
-				// Mock для GetByID
+				// Mock for GetByID
 				rows := sqlmock.NewRows([]string{
 					"post_id", "author_id", "idempotency_key", "title",
 					"content", "status", "created_at", "updated_at",
@@ -327,7 +327,7 @@ func TestPostRepositoryImpl_Update(t *testing.T) {
 					WithArgs(post.PostID).
 					WillReturnRows(rows)
 
-				// Mock для UPDATE
+				// Mock for UPDATE
 				mock.ExpectExec(`UPDATE posts SET`).
 					WithArgs(
 						post.Title,
@@ -464,7 +464,7 @@ func TestPostRepositoryImpl_Update(t *testing.T) {
 			db, mock := setupMockDB(t)
 			tc.setupMock(mock, tc.post)
 
-			repo := NewPostRepository(db)
+			repo := repository.NewPostRepository(db)
 
 			ctx := context.Background()
 			err := repo.Update(ctx, tc.post)
@@ -524,7 +524,7 @@ func TestPostRepositoryImpl_Delete(t *testing.T) {
 			db, mock := setupMockDB(t)
 			tc.setupMock(mock)
 
-			repo := NewPostRepository(db)
+			repo := repository.NewPostRepository(db)
 
 			ctx := context.Background()
 			err := repo.Delete(ctx, tc.postID)
@@ -590,7 +590,7 @@ func TestPostRepositoryImpl_Publish(t *testing.T) {
 			db, mock := setupMockDB(t)
 			tc.setupMock(mock)
 
-			repo := NewPostRepository(db)
+			repo := repository.NewPostRepository(db)
 
 			ctx := context.Background()
 			err := repo.Publish(ctx, tc.postID)
@@ -673,7 +673,7 @@ func TestPostRepositoryImpl_CheckIdempotencyKey(t *testing.T) {
 			db, mock := setupMockDB(t)
 			tc.setupMock(mock)
 
-			repo := NewPostRepository(db)
+			repo := repository.NewPostRepository(db)
 
 			ctx := context.Background()
 			allowed, err := repo.CheckIdempotencyKey(ctx, tc.authorID, tc.idempotencyKey)
@@ -693,7 +693,7 @@ func TestPostRepositoryImpl_CheckIdempotencyKey(t *testing.T) {
 	}
 }
 
-// Вспомогательная функция для создания указателя на строку
+// Auxiliary function for creating a pointer to a string
 func stringPtr(s string) *string {
 	return &s
 }

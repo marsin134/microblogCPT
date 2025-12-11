@@ -16,7 +16,15 @@ type userService struct {
 	cfg      *config.Config
 }
 
+func NewUserService(userRepo repository.UserRepository, cfg *config.Config) UserService {
+	return &userService{
+		userRepo: userRepo,
+		cfg:      cfg,
+	}
+}
+
 func (s *userService) UpdateUser(ctx context.Context, req repository.UpdateUserRequest) error {
+	// get user by id
 	user, err := s.userRepo.GetUserByID(ctx, req.UserID)
 	if err != nil {
 		return err
@@ -25,6 +33,7 @@ func (s *userService) UpdateUser(ctx context.Context, req repository.UpdateUserR
 	user.Email = req.Email
 	user.Role = req.Role
 
+	// update user
 	err = s.userRepo.UpdateUser(ctx, user)
 	if err != nil {
 		return err

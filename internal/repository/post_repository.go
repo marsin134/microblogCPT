@@ -14,7 +14,7 @@ import (
 )
 
 type PostRepositoryImpl struct {
-	db *sqlx.DB
+	DB *sqlx.DB
 }
 
 type CreatePostRequest struct {
@@ -31,7 +31,7 @@ type UpdatePostRequest struct {
 }
 
 func NewPostRepository(db *sqlx.DB) *PostRepositoryImpl {
-	return &PostRepositoryImpl{db: db}
+	return &PostRepositoryImpl{DB: db}
 }
 
 func (r *PostRepositoryImpl) Create(ctx context.Context, post *models.Post, imagesURL []string) error {
@@ -42,7 +42,8 @@ func (r *PostRepositoryImpl) Create(ctx context.Context, post *models.Post, imag
         (:post_id, :author_id, :idempotency_key, :title, :content, :status, :created_at, :updated_at)
     `
 
-	imageRepositoryImpl := ImageRepositoryImpl{db: r.db}
+	// recording images in DB
+	imageRepositoryImpl := ImageRepositoryImpl{db: r.DB}
 	for _, imageURL := range imagesURL {
 
 		image := models.Image{
@@ -53,15 +54,17 @@ func (r *PostRepositoryImpl) Create(ctx context.Context, post *models.Post, imag
 		imageRepositoryImpl.Create(ctx, &image)
 	}
 
+	// create id
 	if post.PostID == "" {
 		post.PostID = uuid.New().String()
 	}
 
+	// create times
 	now := time.Now()
 	post.CreatedAt = now
 	post.UpdatedAt = now
 
-	_, err := r.db.NamedExecContext(ctx, query, post)
+	_, err := r.DB.NamedExecContext(ctx, query, post)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") &&
 			strings.Contains(err.Error(), "idempotency_key") {
@@ -80,7 +83,7 @@ func (r *PostRepositoryImpl) GetByID(ctx context.Context, postID string) (*model
     `
 
 	var post models.Post
-	err := r.db.GetContext(ctx, &post, query, postID)
+	err := r.DB.GetContext(ctx, &post, query, postID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("пост с ID %s не найден", postID)
@@ -95,10 +98,11 @@ func (r *PostRepositoryImpl) GetByUserID(ctx context.Context, userID string) ([]
 	query := `
         SELECT * FROM posts 
         WHERE author_id = $1
+        ORDER BY created_at DESC
     `
 
 	var posts []models.Post
-	err := r.db.GetContext(ctx, &posts, query, userID)
+	err := r.DB.SelectContext(ctx, &posts, query, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("пост пользователя %s не найден", userID)
@@ -113,10 +117,11 @@ func (r *PostRepositoryImpl) GetPublishPosts(ctx context.Context) ([]models.Post
 	query := `
         SELECT * FROM posts 
         WHERE status = 'Published'
+        ORDER BY created_at DESC
     `
 
 	var posts []models.Post
-	err := r.db.GetContext(ctx, &posts, query)
+	err := r.DB.SelectContext(ctx, &posts, query)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("пост пользователя %s не найден")
@@ -148,7 +153,7 @@ func (r *PostRepositoryImpl) Update(ctx context.Context, post *models.Post) erro
 
 	post.UpdatedAt = time.Now()
 
-	result, err := r.db.NamedExecContext(ctx, query, post)
+	result, err := r.DB.NamedExecContext(ctx, query, post)
 	if err != nil {
 		return fmt.Errorf("ошибка при обновлении поста: %w", err)
 	}
@@ -168,7 +173,7 @@ func (r *PostRepositoryImpl) Update(ctx context.Context, post *models.Post) erro
 func (r *PostRepositoryImpl) Delete(ctx context.Context, postID string) error {
 	query := `DELETE FROM posts WHERE post_id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, postID)
+	result, err := r.DB.ExecContext(ctx, query, postID)
 	if err != nil {
 		return fmt.Errorf("ошибка при удалении поста: %w", err)
 	}
@@ -182,7 +187,7 @@ func (r *PostRepositoryImpl) Delete(ctx context.Context, postID string) error {
 		return errors.New("пост не найден")
 	}
 
-	imageRepositoryImpl := ImageRepositoryImpl{r.db}
+	imageRepositoryImpl := ImageRepositoryImpl{r.DB}
 	err = imageRepositoryImpl.DeleteByPostID(ctx, postID)
 	if err != nil {
 		return err
@@ -199,7 +204,7 @@ func (r *PostRepositoryImpl) Publish(ctx context.Context, postID string) error {
 		WHERE post_id = $1 AND status = 'Draft'
 	`
 
-	result, err := r.db.ExecContext(ctx, query, postID)
+	result, err := r.DB.ExecContext(ctx, query, postID)
 	if err != nil {
 		return fmt.Errorf("ошибка при публикации поста: %w", err)
 	}
@@ -227,7 +232,7 @@ func (r *PostRepositoryImpl) CheckIdempotencyKey(ctx context.Context, authorID, 
 	`
 
 	var count int
-	err := r.db.GetContext(ctx, &count, query, authorID, idempotencyKey)
+	err := r.DB.GetContext(ctx, &count, query, authorID, idempotencyKey)
 	if err != nil {
 		return false, fmt.Errorf("ошибка при проверке idempotency key: %w", err)
 	}

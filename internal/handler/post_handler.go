@@ -2,43 +2,26 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"microblogCPT/internal/models"
 	"microblogCPT/internal/repository"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"microblogCPT/internal/service"
-
-	"github.com/go-playground/validator/v10"
 )
 
-type PostHandler struct {
-	postService service.PostService
-	postRepo    repository.PostRepository
-	validate    *validator.Validate
-}
-
-func NewPostHandler(postService service.PostService, postRepo repository.PostRepository) *PostHandler {
-	return &PostHandler{
-		postService: postService,
-		postRepo:    postRepo,
-		validate:    validator.New(),
-	}
-}
-
-func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Получаем информацию о пользователе из контекста
+	// Getting information about the user from the context
 	userRole, _ := r.Context().Value("role").(string)
 	userID, _ := r.Context().Value("userID").(string)
 
-	// Параметры пагинации
+	// Pagination parameters
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	if page < 1 {
 		page = 1
@@ -52,17 +35,18 @@ func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	var total int
 	var err error
 
-	if userRole == "Author" {
-		posts, err = h.postRepo.GetByUserID(r.Context(), userID)
-	} else {
-		posts, err = h.postRepo.GetPublishPosts(r.Context())
+	if userRole == "Author" { // Returning the user posts
+		posts, err = h.PostRepo.GetByUserID(r.Context(), userID)
+	} else { // Returning the all posts
+		posts, err = h.PostRepo.GetPublishPosts(r.Context())
 	}
 
 	if err != nil {
-		writeError(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// forming the response
 	response := map[string]interface{}{
 		"posts": posts,
 		"pagination": map[string]interface{}{
@@ -78,36 +62,36 @@ func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
-
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Извлекаем ID поста из URL
+	// Extracting the post ID from the URL
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 4 {
-		writeError(w, "Неверный URL", http.StatusBadRequest)
+		WriteError(w, "Неверный URL", http.StatusBadRequest)
 		return
 	}
 	postID := pathParts[3]
 
 	userID, _ := r.Context().Value("userID").(string)
 
-	post, err := h.postRepo.GetByID(r.Context(), postID)
+	// we receive a post on id
+	post, err := h.PostRepo.GetByID(r.Context(), postID)
 	if post.Content != "Published" && post.AuthorID != userID {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
 	if err != nil {
 		if strings.Contains(err.Error(), "не найден") {
-			writeError(w, "Пост не найден", http.StatusNotFound)
+			WriteError(w, "Пост не найден", http.StatusNotFound)
 		} else if strings.Contains(err.Error(), "доступ запрещен") {
-			writeError(w, "Доступ запрещен", http.StatusForbidden)
+			WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		} else {
-			writeError(w, err.Error(), http.StatusInternalServerError)
+			WriteError(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -117,31 +101,43 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(post)
 }
 
-func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPut { // if put, then we update the user
+		h.UpdatePost(w, r)
 		return
 	}
 
+	if r.Method != http.MethodPost {
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// checking the user's role
 	userRole, ok := r.Context().Value("role").(string)
 	if !ok || userRole != "Author" {
-		writeError(w, "Пользователь не является Автором", http.StatusForbidden)
+		WriteError(w, "Пользователь не является Автором", http.StatusForbidden)
 		return
 	}
 
 	var req struct {
 		IdempotencyKey *string `json:"idempotencyKey"`
-		Title          string  `json:"title" validate:"required"`
-		Content        string  `json:"content" validate:"required"`
+		Title          string  `json:"title" Validate:"required"`
+		Content        string  `json:"content" Validate:"required"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "Неверный формат запроса", http.StatusBadRequest)
+		WriteError(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
+	if err := h.Validate.Struct(req); err != nil {
+		WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// checking the title of the post
+	if req.Title == "" {
+		WriteError(w, "Отсутствует заголовок", http.StatusBadRequest)
 		return
 	}
 
@@ -154,16 +150,18 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		Content:        req.Content,
 	}
 
-	post, err := h.postService.CreatePost(r.Context(), serviceReq)
+	// creating a post
+	post, err := h.PostService.CreatePost(r.Context(), serviceReq)
 	if err != nil {
 		if strings.Contains(err.Error(), "ключ идемпотентности уже использован") {
-			writeError(w, "Ключ идемпотентности уже использован", http.StatusConflict)
+			WriteError(w, "Ключ идемпотентности уже использован", http.StatusConflict)
 		} else {
-			writeError(w, err.Error(), http.StatusInternalServerError)
+			WriteError(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
+	// forming the response
 	response := map[string]interface{}{
 		"postId":         post.PostID,
 		"idempotencyKey": post.IdempotencyKey,
@@ -179,37 +177,44 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
+	// checking the user's role
 	userRole, ok := r.Context().Value("role").(string)
 	if !ok || userRole != "Author" {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
+	// check url
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 4 {
-		writeError(w, "Неверный URL", http.StatusBadRequest)
+		WriteError(w, "Неверный URL", http.StatusBadRequest)
 		return
 	}
 	postID := pathParts[3]
 
 	var req struct {
-		Title   string `json:"title" validate:"required"`
-		Content string `json:"content" validate:"required"`
+		Title   string `json:"title" Validate:"required"`
+		Content string `json:"content" Validate:"required"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "Неверный формат запроса", http.StatusBadRequest)
+		WriteError(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
+	if err := h.Validate.Struct(req); err != nil {
+		WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Title == "" {
+		WriteError(w, "Отсутствует заголовок", http.StatusBadRequest)
 		return
 	}
 
@@ -219,13 +224,14 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		Content: req.Content,
 	}
 
-	if err := h.postService.UpdatePost(r.Context(), serviceReq); err != nil {
+	// updating the post
+	if err := h.PostService.UpdatePost(r.Context(), serviceReq); err != nil {
 		if strings.Contains(err.Error(), "пост не найден") {
-			writeError(w, "Пост не найден", http.StatusNotFound)
+			WriteError(w, "Пост не найден", http.StatusNotFound)
 		} else if strings.Contains(err.Error(), "доступ запрещен") {
-			writeError(w, "Доступ запрещен", http.StatusForbidden)
+			WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		} else {
-			writeError(w, err.Error(), http.StatusInternalServerError)
+			WriteError(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -234,44 +240,61 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Пост успешно обновлен"})
 }
 
-// AddedImage - POST /api/posts/{postId}/images
-func (h *PostHandler) AddedImage(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) AddedImage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
+	// checking the user's role
 	userRole, ok := r.Context().Value("role").(string)
 	if !ok || userRole != "Author" {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
+	// check url
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 5 || pathParts[4] != "images" {
-		writeError(w, "Неверный URL", http.StatusBadRequest)
+		WriteError(w, "Неверный URL", http.StatusBadRequest)
 		return
 	}
+
+	// we receive a post on id
 	postID := pathParts[3]
-	authorID := r.Context().Value("userID").(string)
-
-	post, err := h.postRepo.GetByID(r.Context(), postID)
+	post, err := h.PostRepo.GetByID(r.Context(), postID)
 	if err != nil {
-		writeError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if post.AuthorID != authorID {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// we check that only the author can add
+	authorID := r.Context().Value("userID").(string)
+	if authorID != post.AuthorID {
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
+		return
+	}
+
+	// setting the size limit from the config
+	if err := r.ParseMultipartForm(h.Cfg.MaxUploadSize); err != nil {
+		if err.Error() == "http: request body too large" {
+			WriteError(w, fmt.Sprintf("Файл слишком большой (макс. %d MB)",
+				h.Cfg.MaxUploadSize/(1024*1024)), http.StatusBadRequest)
+		} else {
+			WriteError(w, "Ошибка при обработке файла", http.StatusBadRequest)
+		}
+		return
+	}
+
+	// getting the file
 	file, handler, err := r.FormFile("image")
 	if err != nil {
-		writeError(w, "Не удалось получить файл", http.StatusBadRequest)
+		WriteError(w, "Не удалось получить файл", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
+	// formats image
 	allowedTypes := map[string]bool{
 		"image/jpeg": true,
 		"image/jpg":  true,
@@ -280,30 +303,36 @@ func (h *PostHandler) AddedImage(w http.ResponseWriter, r *http.Request) {
 		"image/webp": true,
 	}
 
+	// check formats
 	contentType := handler.Header.Get("Content-Type")
 	if !allowedTypes[contentType] {
-		writeError(w, "Неподдерживаемый тип файла. Разрешены: JPEG, PNG, GIF, WebP", http.StatusBadRequest)
+		WriteError(w, "Неподдерживаемый тип файла. Разрешены: JPEG, PNG, GIF, WebP", http.StatusBadRequest)
 		return
 	}
 
-	image, err := h.postService.AddedImage(r.Context(), postID, handler.Filename, file, handler.Size)
+	// added image
+	image, err := h.PostService.AddedImage(r.Context(), postID, handler.Filename, file, handler.Size)
 	if err != nil {
 		if strings.Contains(err.Error(), "доступ запрещен") {
-			writeError(w, "Доступ запрещен", http.StatusForbidden)
+			WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		} else if strings.Contains(err.Error(), "пост не найден") {
-			writeError(w, "Пост не найден", http.StatusNotFound)
+			WriteError(w, "Пост не найден", http.StatusNotFound)
 		} else if strings.Contains(err.Error(), "размер файла превышает") {
-			writeError(w, err.Error(), http.StatusBadRequest)
+			WriteError(w, err.Error(), http.StatusBadRequest)
 		} else {
-			writeError(w, "Ошибка загрузки изображения", http.StatusInternalServerError)
+			WriteError(w, "Ошибка загрузки изображения", http.StatusInternalServerError)
 		}
 		return
 	}
 
+	// forming the response
 	response := map[string]interface{}{
 		"imageId":   image.ImageID,
 		"postId":    image.PostID,
 		"imageUrl":  image.ImageURL,
+		"fileName":  handler.Filename,
+		"fileSize":  handler.Size,
+		"mimeType":  contentType,
 		"createdAt": image.CreatedAt.Format(time.RFC3339),
 	}
 
@@ -312,49 +341,56 @@ func (h *PostHandler) AddedImage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// DeleteImage - DELETE /api/posts/{postId}/images/{imageId}
-func (h *PostHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	userRole, ok := r.Context().Value("role").(string)
+	// checking the user's role
+	userRole, ok := r.Context().Value("userRole").(string)
 	if !ok || userRole != "Author" {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
+	// check url
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 6 || pathParts[4] != "images" {
-		writeError(w, "Неверный URL", http.StatusBadRequest)
+		WriteError(w, "Неверный URL", http.StatusBadRequest)
 		return
 	}
 	postID := pathParts[3]
 	imageID := pathParts[5]
-	authorID := r.Context().Value("userID").(string)
-	post, err := h.postRepo.GetByID(r.Context(), postID)
+
+	// get post by id
+	post, err := h.PostRepo.GetByID(r.Context(), postID)
 	if err != nil {
-		writeError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if post.AuthorID != authorID {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.postService.DeleteImage(r.Context(), imageID)
+	// we check that only the author can delete
+	authorID := r.Context().Value("userID").(string)
+	if authorID != post.AuthorID {
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
+		return
+	}
+
+	// delete image
+	err = h.PostService.DeleteImage(r.Context(), imageID)
 	if err != nil {
 		if strings.Contains(err.Error(), "доступ запрещен") {
-			writeError(w, "Доступ запрещен", http.StatusForbidden)
+			WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		} else if strings.Contains(err.Error(), "не найдено") {
-			writeError(w, "Пост или картинка не найдены", http.StatusNotFound)
+			WriteError(w, "Пост или картинка не найдены", http.StatusNotFound)
 		} else {
-			writeError(w, "Ошибка удаления изображения", http.StatusInternalServerError)
+			WriteError(w, "Ошибка удаления изображения", http.StatusInternalServerError)
 		}
 		return
 	}
 
+	// forming the response
 	response := map[string]string{
 		"message": "Картинка успешно удалена",
 		"postId":  postID,
@@ -366,48 +402,48 @@ func (h *PostHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (h *PostHandler) PublishPost(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) PublishPost(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
-		writeError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Проверяем роль пользователя
+	// checking the user's role
 	userRole, ok := r.Context().Value("role").(string)
 	if !ok || userRole != "Author" {
-		writeError(w, "Доступ запрещен", http.StatusForbidden)
+		WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
-	// Извлекаем ID поста из URL
+	// extracting the post id from the url
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 5 || pathParts[4] != "status" {
-		writeError(w, "Неверный URL", http.StatusBadRequest)
+		WriteError(w, "Неверный URL", http.StatusBadRequest)
 		return
 	}
 	postID := pathParts[3]
 
 	var req struct {
-		Status string `json:"status" validate:"required,oneof=Published"`
+		Status string `json:"status" Validate:"required,oneof=Published"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "Неверный формат запроса", http.StatusBadRequest)
+		WriteError(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.validate.Struct(req); err != nil {
-		writeError(w, "Неверное значение статуса", http.StatusBadRequest)
+	if err := h.Validate.Struct(req); err != nil {
+		WriteError(w, "Неверное значение статуса", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.postService.PublishPost(r.Context(), postID); err != nil {
+	if err := h.PostService.PublishPost(r.Context(), postID); err != nil {
 		if strings.Contains(err.Error(), "пост не найден") {
-			writeError(w, "Пост не найден", http.StatusNotFound)
+			WriteError(w, "Пост не найден", http.StatusNotFound)
 		} else if strings.Contains(err.Error(), "доступ запрещен") {
-			writeError(w, "Доступ запрещен", http.StatusForbidden)
+			WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		} else {
-			writeError(w, err.Error(), http.StatusInternalServerError)
+			WriteError(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}

@@ -1,9 +1,10 @@
-package repository
+package testRepository
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"microblogCPT/internal/repository"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestUserRepository_CreateUser(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 
@@ -30,7 +31,6 @@ func TestUserRepository_CreateUser(t *testing.T) {
 	password := "password123"
 	role := "Author"
 
-	// Создаем пользователя БЕЗ предустановленного ID
 	user := &models.User{
 		Email:                  email,
 		Role:                   role,
@@ -44,7 +44,7 @@ func TestUserRepository_CreateUser(t *testing.T) {
 			VALUES (?, ?, ?, ?, ?, ?)
 		`).
 			WithArgs(
-				sqlmock.AnyArg(), // user_id будет сгенерирован в репозитории
+				sqlmock.AnyArg(), // user_id
 				email,
 				sqlmock.AnyArg(), // password_hash
 				role,
@@ -56,7 +56,7 @@ func TestUserRepository_CreateUser(t *testing.T) {
 		err := repo.CreateUser(ctx, user, password)
 
 		assert.NoError(t, err)
-		assert.NotEmpty(t, user.UserID) // Проверяем что ID был сгенерирован
+		assert.NotEmpty(t, user.UserID)
 		assert.NotEqual(t, password, user.PasswordHash)
 
 		err = mock.ExpectationsWereMet()
@@ -64,7 +64,6 @@ func TestUserRepository_CreateUser(t *testing.T) {
 	})
 
 	t.Run("Ошибка при дублировании email", func(t *testing.T) {
-		// Для второго теста нужно создать нового пользователя
 		user2 := &models.User{
 			Email:                  email,
 			Role:                   role,
@@ -99,7 +98,7 @@ func TestUserRepository_GetUserByID(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	userID := uuid.New().String()
@@ -172,7 +171,7 @@ func TestUserRepository_GetUserByEmail(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	email := "test@example.com"
@@ -205,7 +204,7 @@ func TestUserRepository_VerifyPassword(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	email := "test@example.com"
@@ -270,7 +269,7 @@ func TestUserRepository_UpdateRefreshToken(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	userID := uuid.New().String()
@@ -307,7 +306,7 @@ func TestUserRepository_GetUserByRefreshToken(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	refreshToken := "valid_refresh_token"
@@ -368,7 +367,7 @@ func TestUserRepository_UpdateUser(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	user := &models.User{
@@ -405,7 +404,7 @@ func TestUserRepository_DeleteUser(t *testing.T) {
 	defer db.Close()
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	repo := NewUserRepository(sqlxDB)
+	repo := repository.NewUserRepository(sqlxDB)
 
 	ctx := context.Background()
 	userID := uuid.New().String()
@@ -432,4 +431,4 @@ func TestUserRepository_DeleteUser(t *testing.T) {
 	})
 }
 
-//go test ./internal/repository/... -v
+//go test ./internal/repository/testRepository/... -v

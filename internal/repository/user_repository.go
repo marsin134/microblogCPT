@@ -33,11 +33,13 @@ func NewUserRepository(db *sqlx.DB) UserRepository {
 }
 
 func (r *userRepository) CreateUser(ctx context.Context, user *models.User, password string) error {
+	// create password hash
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("ошибка при хешировании пароля: %w", err)
 	}
 
+	// create user id
 	user.UserID = uuid.New().String()
 	user.PasswordHash = string(hashedPassword)
 
@@ -92,6 +94,7 @@ func (r *userRepository) VerifyPassword(ctx context.Context, email, password str
 		return nil, err
 	}
 
+	// checking that the password hash is the same
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		return nil, fmt.Errorf("неверный пароль")
