@@ -29,10 +29,12 @@ func (r *ImageRepositoryImpl) Create(ctx context.Context, image *models.Image) e
 		VALUES (:image_id, :post_id, :image_url, :created_at)
 	`
 
+	// create id
 	if image.ImageID == "" {
 		image.ImageID = uuid.New().String()
 	}
 
+	// create time created
 	if image.CreatedAt.IsZero() {
 		image.CreatedAt = time.Now()
 	}

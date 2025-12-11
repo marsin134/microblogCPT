@@ -3,27 +3,43 @@ package storage
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"io"
+	"microblogCPT/internal/config"
 	"mime"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"microblogCPT/internal/config"
-
-	"github.com/google/uuid"
 )
 
 type Storage interface {
-	UploadImage(ctx context.Context, postID string, fileName string, file io.Reader, size int64) (string, string, error)
+	UploadImage(ctx context.Context, postID, fileName string, file io.Reader, size int64) (string, string, error)
 	DeleteImage(ctx context.Context, objectName string) error
-	GetImageURL(ctx context.Context, objectName string) (string, error)
 }
 
 type MinIOClient struct {
 	client *minio.Client
 	config *config.Config
+}
+
+func NewMinIOClient(cfg *config.Config) (*MinIOClient, error) {
+	minioClient, err := minio.New(cfg.MinIO.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.MinIO.AccessKey, cfg.MinIO.SecretKey, ""),
+		Secure: cfg.MinIO.UseSSL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ошибка создания MinIO клиента: %w", err)
+	}
+
+	client := &MinIOClient{
+		client: minioClient,
+		config: cfg,
+	}
+
+	fmt.Println("MinIO клиент инициализирован")
+	return client, nil
 }
 
 func (m *MinIOClient) UploadImage(ctx context.Context, postID string, fileName string, file io.Reader, size int64) (string, string, error) {

@@ -32,7 +32,7 @@ func ConnectDB(cfg *config.Config) (*DB, error) {
 		cfg.DB.DbSSLMODE,
 	)
 
-	log.Printf("Подключаемся к БД: host=%s, dbname=%s", cfg.DB.DbHOST, cfg.DB.DbNAME)
+	fmt.Printf("Подключаемся к БД: host=%s, dbname=%s\n", cfg.DB.DbHOST, cfg.DB.DbNAME)
 
 	db, err := sqlx.Connect("postgres", connStr)
 	if err != nil {
@@ -60,7 +60,7 @@ func ConnectDB(cfg *config.Config) (*DB, error) {
 		log.Fatalf("Проверка БД не пройдена: %v", err)
 	}
 
-	log.Println("Успешное подключение к PostgreSQL")
+	fmt.Println("Успешное подключение к PostgreSQL")
 	return &dbStruct, nil
 }
 
@@ -78,14 +78,14 @@ func (db *DB) RunMigrations(migrationFilePath string) error {
 		return fmt.Errorf("ошибка при чтении файла миграций: %w", err)
 	}
 
-	log.Printf("Применяем миграции из файла: %s", migrationFilePath)
+	fmt.Printf("Применяем миграции из файла: %s\n", migrationFilePath)
 
 	_, err = db.Exec(string(migrationSQL))
 	if err != nil {
 		return fmt.Errorf("ошибка при выполнении миграций: %w", err)
 	}
 
-	log.Println("Миграции успешно применены")
+	fmt.Println("Миграции успешно применены")
 	return nil
 }
 
