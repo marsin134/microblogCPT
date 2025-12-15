@@ -7,15 +7,17 @@ import (
 )
 
 type Service struct {
-	User UserService
-	Post PostService
-	Auth AuthService
+	User   UserService
+	Post   PostService
+	Auth   AuthService
+	Tables TablesService
 }
 
 func NewService(rep *repository.Repository, cfg *config.Config, storage storage.Storage) *Service {
 	return &Service{
-		User: NewUserService(rep.User, cfg),
-		Post: NewPostService(rep.Post, rep.Image, storage, cfg),
-		Auth: NewAuthService(rep.User, cfg),
+		User:   NewUserService(rep.User, cfg),
+		Post:   NewPostService(rep.Post, rep.Image, storage, cfg),
+		Auth:   NewAuthService(rep.User, cfg),
+		Tables: NewTablesService(rep.Tables),
 	}
 }

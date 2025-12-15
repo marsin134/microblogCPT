@@ -47,7 +47,7 @@ func main() {
 	// setting up routes
 	mux.HandleFunc("/", homeHandler)
 	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/tables", tablesHandler(db))
+	mux.HandleFunc("/tables", handler.TablesHandler)
 
 	mux.HandleFunc("/api/auth/register", handler.Register)
 	mux.HandleFunc("/api/auth/login", handler.Login)
@@ -139,23 +139,4 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"status": "ok", "service": "microblog", "timestamp": "%s"}`, time.Now().Format(time.RFC3339))
-}
-
-func tablesHandler(db *database.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var count int
-		err := db.Get(&count, `
-			SELECT COUNT(*) 
-			FROM information_schema.tables 
-			WHERE table_schema = 'public'
-		`)
-
-		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"tables_count": %d}`, count)
-	}
 }

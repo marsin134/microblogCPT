@@ -37,16 +37,22 @@ type ImageRepository interface {
 	DeleteByPostID(ctx context.Context, postID string) error
 }
 
+type TablesRepository interface {
+	CountTablesDB() (int, error)
+}
+
 type Repository struct {
-	User  UserRepository
-	Post  PostRepository
-	Image ImageRepository // Добавляем репозиторий изображений
+	User   UserRepository
+	Post   PostRepository
+	Image  ImageRepository
+	Tables TablesRepository
 }
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{
-		User:  NewUserRepository(db),
-		Post:  NewPostRepository(db),
-		Image: NewImageRepository(db), // Инициализируем
+		User:   NewUserRepository(db),
+		Post:   NewPostRepository(db),
+		Image:  NewImageRepository(db),
+		Tables: NewTablesRepository(db), // Инициализируем
 	}
 }
