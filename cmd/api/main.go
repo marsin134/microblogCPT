@@ -11,7 +11,6 @@ import (
 	"microblogCPT/internal/service"
 	"microblogCPT/internal/storage"
 	"net/http"
-	"time"
 )
 
 func main() {
@@ -45,8 +44,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	// setting up routes
-	mux.HandleFunc("/", homeHandler)
-	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/", handlers.HomeHandler)
+	mux.HandleFunc("/health", handlers.HealthHandler)
 	mux.HandleFunc("/tables", handler.TablesHandler)
 
 	mux.HandleFunc("/api/auth/register", handler.Register)
@@ -79,64 +78,4 @@ func main() {
 	if err := http.ListenAndServe(addr, handlerChain); err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}
-}
-
-// main page
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-
-	fmt.Fprintf(w, `
-	<!DOCTYPE html>
-	<html>
-	<head>
-		<title>Микроблог API</title>
-		<style>
-			body { font-family: Arial, sans-serif; margin: 40px; }
-			h1 { color: #333; }
-			.endpoint { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 5px; }
-			.method { font-weight: bold; color: #007bff; }
-			.path { color: #28a745; }
-		</style>
-	</head>
-	<body>
-		<h1>Микроблог API</h1>
-		<p>Добро пожаловать в микроблог платформу!</p>
-		
-		<h2>Аутентификация</h2>
-		<div class="endpoint"><span class="method">POST</span> <span class="path">/api/auth/register</span> - Регистрация</div>
-		<div class="endpoint"><span class="method">POST</span> <span class="path">/api/auth/login</span> - Вход</div>
-		<div class="endpoint"><span class="method">POST</span> <span class="path">/api/auth/refresh-token</span> - Обновление токена</div>
-		
-		<h2>Пользователи</h2>
-		<div class="endpoint"><span class="method">GET</span> <span class="path">/api/me</span> - Текущий пользователь</div>
-		<div class="endpoint"><span class="method">GET</span> <span class="path">/api/user/{id}</span> - Пользователь по ID</div>
-		
-		<h2>Посты</h2>
-		<div class="endpoint"><span class="method">GET</span> <span class="path">/api/posts</span> - Все посты</div>
-		<div class="endpoint"><span class="method">POST</span> <span class="path">/api/posts</span> - Создать пост</div>
-		<div class="endpoint"><span class="method">PUT</span> <span class="path">/api/posts/{id}</span> - Обновить пост</div>
-		<div class="endpoint"><span class="method">PATCH</span> <span class="path">/api/posts/{id}/status</span> - Публикация поста</div>
-		
-		<h2>Изображения</h2>
-		<div class="endpoint"><span class="method">POST</span> <span class="path">/api/posts/{id}/images</span> - Добавить изображение</div>
-		<div class="endpoint"><span class="method">DELETE</span> <span class="path">/api/posts/{id}/images/{imageId}</span> - Удалить изображение</div>
-		
-		<h2>Система</h2>
-		<div class="endpoint"><span class="method">GET</span> <span class="path">/health</span> - Статус сервера</div>
-		<div class="endpoint"><span class="method">GET</span> <span class="path">/tables</span> - Таблицы БД</div>
-		
-		<hr>
-		<p><strong>Для работы с API используйте Bearer токен:</strong> Authorization: Bearer YOUR_TOKEN</p>
-		<p><strong>Роли:</strong> Author (может создавать посты), Reader (только чтение)</p>
-	</body>
-	</html>
-	`)
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"status": "ok", "service": "microblog", "timestamp": "%s"}`, time.Now().Format(time.RFC3339))
 }
