@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"microblogCPT/cmd/app"
 	"microblogCPT/internal/config"
 	"microblogCPT/internal/database"
 	handlers "microblogCPT/internal/handler"
 	"microblogCPT/internal/middleware"
-	"microblogCPT/internal/repository"
 	"microblogCPT/internal/service"
-	"microblogCPT/internal/storage"
 	"net/http"
 )
 
@@ -21,23 +20,8 @@ func main() {
 		log.Fatal("JWT_SECRET_KEY не установлен в .env файле")
 	}
 
-	// connection DB
-	db, err := database.ConnectDB(cfg)
-	if err != nil {
-		log.Fatalf("Не удалось подключиться к БД: %v", err)
-	}
+	db, repo, services := app.App(cfg)
 	defer database.MethodsDB.CloseDB(db)
-
-	// connection MinIO
-	minioClient, err := storage.NewMinIOClient(cfg)
-	if err != nil {
-		log.Fatalf("Не удалось инициализировать MinIO: %v", err)
-	}
-
-	// enabling dependencies
-	repo := repository.NewRepository(db.DB)
-
-	services := service.NewService(repo, cfg, minioClient)
 
 	handler := handlers.NewHandlers(repo, services, cfg)
 
