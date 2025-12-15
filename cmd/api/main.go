@@ -41,29 +41,29 @@ func main() {
 
 	handler := handlers.NewHandlers(repo, services, cfg)
 
-	mux := http.NewServeMux()
+	mux := service.CreateMux()
 
 	// setting up routes
-	mux.HandleFunc("/", handlers.HomeHandler)
-	mux.HandleFunc("/health", handlers.HealthHandler)
-	mux.HandleFunc("/tables", handler.TablesHandler)
+	mux.Mux.HandleFunc("/", handlers.HomeHandler)
+	mux.Mux.HandleFunc("/health", handlers.HealthHandler)
+	mux.Mux.HandleFunc("/tables", handler.TablesHandler)
 
-	mux.HandleFunc("/api/auth/register", handler.Register)
-	mux.HandleFunc("/api/auth/login", handler.Login)
-	mux.HandleFunc("/api/auth/refresh-token", handler.RefreshToken)
+	mux.Mux.HandleFunc("/api/auth/register", handler.Register)
+	mux.Mux.HandleFunc("/api/auth/login", handler.Login)
+	mux.Mux.HandleFunc("/api/auth/refresh-token", handler.RefreshToken)
 
-	mux.HandleFunc("/api/me", handler.GetCurrentUser)
-	mux.HandleFunc("/api/user/", handler.GetUser)
+	mux.Mux.HandleFunc("/api/me", handler.GetCurrentUser)
+	mux.Mux.HandleFunc("/api/user/", handler.GetUser)
 
-	mux.HandleFunc("/api/posts", handler.GetPosts)
-	mux.HandleFunc("/api/posts/", handler.CreatePost)
-	mux.HandleFunc("/api/posts//status", handler.PublishPost)
+	mux.Mux.HandleFunc("/api/posts", handler.GetPosts)
+	mux.Mux.HandleFunc("/api/posts/", handler.CreatePost)
+	mux.Mux.HandleFunc("/api/posts//status", handler.PublishPost)
 
-	mux.HandleFunc("/api/posts//images", handler.AddedImage)
-	mux.HandleFunc("/api/posts//images/", handler.DeleteImage)
+	mux.Mux.HandleFunc("/api/posts//images", handler.AddedImage)
+	mux.Mux.HandleFunc("/api/posts//images/", handler.DeleteImage)
 
 	handlerChain := middleware.Chain(
-		mux,
+		mux.Mux,
 		middleware.LoggingMiddleware,
 		middleware.CORSMiddleware,
 		middleware.AuthMiddleware(cfg),
