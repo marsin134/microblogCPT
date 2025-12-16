@@ -11,6 +11,38 @@ import (
 	"time"
 )
 
+type PaginationResponse struct {
+	Page       int `json:"page"`
+	Limit      int `json:"limit"`
+	Total      int `json:"total"`
+	TotalPages int `json:"totalPages"`
+}
+
+type PostsGetResponse struct {
+	Posts      []models.Post
+	Pagination PaginationResponse
+}
+
+type PostResponse struct {
+	PostId         string    `json:"postId"`
+	IdempotencyKey *string   `json:"idempotencyKey"`
+	Title          string    `json:"title"`
+	Content        string    `json:"content"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
+type ImageResponse struct {
+	ImageID   string `json:"image_id"`
+	PostID    string `json:"post_id"`
+	ImageUrl  string `json:"imageUrl"`
+	FileName  string `json:"fileName"`
+	FileSize  int64  `json:"fileSize"`
+	MimeType  string `json:"mimeType"`
+	CreatedAt string `json:"createdAt"`
+}
+
 func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -47,13 +79,13 @@ func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// forming the response
-	response := map[string]interface{}{
-		"posts": posts,
-		"pagination": map[string]interface{}{
-			"page":       page,
-			"limit":      limit,
-			"total":      total,
-			"totalPages": (total + limit - 1) / limit,
+	response := PostsGetResponse{
+		Posts: posts,
+		Pagination: PaginationResponse{
+			Page:       page,
+			Limit:      limit,
+			Total:      total,
+			TotalPages: (total + limit - 1) / limit,
 		},
 	}
 
@@ -162,14 +194,14 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// forming the response
-	response := map[string]interface{}{
-		"postId":         post.PostID,
-		"idempotencyKey": post.IdempotencyKey,
-		"title":          post.Title,
-		"content":        post.Content,
-		"status":         post.Status,
-		"createdAt":      post.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		"updatedAt":      post.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	response := PostResponse{
+		PostId:         post.PostID,
+		IdempotencyKey: post.IdempotencyKey,
+		Title:          post.Title,
+		Content:        post.Content,
+		Status:         post.Status,
+		CreatedAt:      post.CreatedAt,
+		UpdatedAt:      post.UpdatedAt,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -237,7 +269,7 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Пост успешно обновлен"})
+	json.NewEncoder(w).Encode(MessageResponse{Message: "Пост успешно обновлен"})
 }
 
 func (h *Handlers) AddedImage(w http.ResponseWriter, r *http.Request) {
@@ -326,14 +358,14 @@ func (h *Handlers) AddedImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// forming the response
-	response := map[string]interface{}{
-		"imageId":   image.ImageID,
-		"postId":    image.PostID,
-		"imageUrl":  image.ImageURL,
-		"fileName":  handler.Filename,
-		"fileSize":  handler.Size,
-		"mimeType":  contentType,
-		"createdAt": image.CreatedAt.Format(time.RFC3339),
+	response := ImageResponse{
+		ImageID:   image.ImageID,
+		PostID:    image.PostID,
+		ImageUrl:  image.ImageURL,
+		FileName:  handler.Filename,
+		FileSize:  handler.Size,
+		MimeType:  contentType,
+		CreatedAt: image.CreatedAt.Format(time.RFC3339),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -390,16 +422,9 @@ func (h *Handlers) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// forming the response
-	response := map[string]string{
-		"message": "Картинка успешно удалена",
-		"postId":  postID,
-		"imageId": imageID,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(MessageResponse{Message: "Картинка успешно удалена"})
 }
 
 func (h *Handlers) PublishPost(w http.ResponseWriter, r *http.Request) {
@@ -449,5 +474,5 @@ func (h *Handlers) PublishPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Пост успешно опубликован"})
+	json.NewEncoder(w).Encode(MessageResponse{Message: "Пост успешно опубликован"})
 }

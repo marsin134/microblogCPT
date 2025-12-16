@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+type UserResponse struct {
+	UserId string `json:"userId"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
+}
+
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
 func (h *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -40,10 +50,10 @@ func (h *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{
-		"userId": user.UserID,
-		"email":  user.Email,
-		"role":   user.Role,
+	response := UserResponse{
+		UserId: userID,
+		Email:  user.Email,
+		Role:   user.Role,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -118,7 +128,7 @@ func (h *Handlers) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Пользователь обновлен"})
+	json.NewEncoder(w).Encode(MessageResponse{Message: "Пользователь обновлен"})
 }
 
 func (h *Handlers) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +161,7 @@ func (h *Handlers) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Пользователь удален"})
+	json.NewEncoder(w).Encode(MessageResponse{Message: "Пользователь удален"})
 }
 
 func (h *Handlers) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -174,10 +184,10 @@ func (h *Handlers) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// forming the response
-	response := map[string]interface{}{
-		"userId": user.UserID,
-		"email":  user.Email,
-		"role":   user.Role,
+	response := UserResponse{
+		UserId: userID,
+		Email:  user.Email,
+		Role:   user.Role,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

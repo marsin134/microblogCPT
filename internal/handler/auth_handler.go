@@ -16,6 +16,12 @@ type RegisterRequest struct {
 	Role     string `json:"role" Validate:"required,oneof=Author Reader"`
 }
 
+type AuthResponse struct {
+	AccessToken  string       `json:"accessToken"`
+	RefreshToken string       `json:"refreshToken"`
+	User         UserResponse `json:"user"`
+}
+
 func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 	// check method
 	if r.Method != http.MethodPost {
@@ -93,13 +99,13 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// forming the response
-	response := map[string]interface{}{
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
-		"user": map[string]interface{}{
-			"userId": user.UserID,
-			"email":  user.Email,
-			"role":   user.Role,
+	response := AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User: UserResponse{
+			UserId: user.UserID,
+			Email:  user.Email,
+			Role:   user.Role,
 		},
 	}
 
@@ -142,13 +148,13 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// forming the response
-	response := map[string]interface{}{
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
-		"user": map[string]interface{}{
-			"userId": user.UserID,
-			"email":  user.Email,
-			"role":   user.Role,
+	response := AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User: UserResponse{
+			UserId: user.UserID,
+			Email:  user.Email,
+			Role:   user.Role,
 		},
 	}
 
@@ -191,13 +197,13 @@ func (h *Handlers) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
-		"user": map[string]interface{}{
-			"userId": user.UserID,
-			"email":  user.Email,
-			"role":   user.Role,
+	response := AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User: UserResponse{
+			UserId: user.UserID,
+			Email:  user.Email,
+			Role:   user.Role,
 		},
 	}
 
