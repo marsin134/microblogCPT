@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+type TablesResponse struct {
+	CountTables int `json:"countTables"`
+}
+
 func (h *Handlers) TablesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		WriteError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -18,5 +22,5 @@ func (h *Handlers) TablesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{"tables_count": count})
+	json.NewEncoder(w).Encode(TablesResponse{count})
 }
