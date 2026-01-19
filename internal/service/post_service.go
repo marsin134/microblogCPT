@@ -13,6 +13,9 @@ import (
 )
 
 type PostService interface {
+	GetPostByIDService(ctx context.Context, postID string) (*models.Post, error)
+	GetPostByUserID(ctx context.Context, userID string) ([]models.Post, error)
+	GetPublishPostsService(ctx context.Context) ([]models.Post, error)
 	CreatePost(ctx context.Context, req repository.CreatePostRequest) (*models.Post, error)
 	UpdatePost(ctx context.Context, req repository.UpdatePostRequest) error
 	DeletePost(ctx context.Context, postID string) error
@@ -35,6 +38,30 @@ func NewPostService(postRepo repository.PostRepository, imageRepo repository.Ima
 		storage:   storage,
 		cfg:       cfg,
 	}
+}
+
+func (p *postService) GetPostByIDService(ctx context.Context, postID string) (*models.Post, error) {
+	post, err := p.postRepo.GetByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	return post, nil
+}
+
+func (p *postService) GetPostByUserID(ctx context.Context, userID string) ([]models.Post, error) {
+	posts, err := p.postRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return posts, nil
+}
+
+func (p *postService) GetPublishPostsService(ctx context.Context) ([]models.Post, error) {
+	posts, err := p.postRepo.GetPublishPosts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return posts, nil
 }
 
 func (p *postService) CreatePost(ctx context.Context, req repository.CreatePostRequest) (*models.Post, error) {

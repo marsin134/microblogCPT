@@ -102,6 +102,14 @@ type MockUserService struct {
 	mock.Mock
 }
 
+func (m *MockUserService) GetUserByIDService(ctx context.Context, userID string) (*models.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
 func (m *MockUserService) UpdateUser(ctx context.Context, req repository.UpdateUserRequest) error {
 	args := m.Called(ctx, req)
 	return args.Error(0)
@@ -114,6 +122,30 @@ func (m *MockUserService) DeleteUser(ctx context.Context, userID string) error {
 
 type MockPostService struct {
 	mock.Mock
+}
+
+func (m *MockPostService) GetPostByIDService(ctx context.Context, postID string) (*models.Post, error) {
+	args := m.Called(ctx, postID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Post), args.Error(1)
+}
+
+func (m *MockPostService) GetPostByUserID(ctx context.Context, userID string) ([]models.Post, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.Post), args.Error(1)
+}
+
+func (m *MockPostService) GetPublishPostsService(ctx context.Context) ([]models.Post, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.Post), args.Error(1)
 }
 
 func (m *MockPostService) CreatePost(ctx context.Context, req repository.CreatePostRequest) (*models.Post, error) {

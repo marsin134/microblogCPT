@@ -3,7 +3,7 @@ package service
 import "microblogCPT/internal/repository"
 
 type TablesService interface {
-	GetCountTablesBD(req repository.TablesRepository) (int, error)
+	GetCountTablesBD() (int, error)
 }
 
 type tablesService struct {
@@ -14,8 +14,8 @@ func NewTablesService(tablesRepo repository.TablesRepository) TablesService {
 	return &tablesService{tablesRepo: tablesRepo}
 }
 
-func (t *tablesService) GetCountTablesBD(req repository.TablesRepository) (int, error) {
-	countTables, err := req.CountTablesDB()
+func (t *tablesService) GetCountTablesBD() (int, error) {
+	countTables, err := t.tablesRepo.CountTablesDB()
 	if err != nil {
 		return 0, err
 	}

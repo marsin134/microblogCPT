@@ -20,10 +20,11 @@ func main() {
 		log.Fatal("JWT_SECRET_KEY не установлен в .env файле")
 	}
 
-	db, repo, services := app.App(cfg)
+	// connection DB and services
+	db, services := app.App(cfg)
 	defer database.MethodsDB.CloseDB(db)
 
-	handler := handlers.NewHandlers(repo, services, cfg)
+	handler := handlers.NewHandlers(services, cfg)
 
 	mux := service.CreateMux()
 
