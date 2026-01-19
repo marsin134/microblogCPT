@@ -27,10 +27,8 @@ func createTestHandler(authService *MockAuthService) *handlers.Handlers {
 
 	return &handlers.Handlers{
 		UserService: &MockUserService{},
-		UserRepo:    &MockUserRepository{},
 		AuthService: authService,
 		PostService: nil,
-		PostRepo:    nil,
 		Cfg:         cfg,
 		Validate:    validator.New(),
 	}

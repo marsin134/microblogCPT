@@ -23,7 +23,7 @@ func TestGetPostsHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		contextValues  map[string]interface{}
-		mockSetup      func(*MockPostRepository)
+		mockSetup      func(service *MockPostService)
 		expectedStatus int
 	}{
 		{
@@ -32,8 +32,8 @@ func TestGetPostsHandler(t *testing.T) {
 				"userID": "123",
 				"role":   "Author",
 			},
-			mockSetup: func(repo *MockPostRepository) {
-				repo.On("GetByUserID", mock.Anything, "123").
+			mockSetup: func(service *MockPostService) {
+				service.On("GetPostByUserID", mock.Anything, "123").
 					Return([]models.Post{
 						{
 							PostID:    "post1",
@@ -54,8 +54,8 @@ func TestGetPostsHandler(t *testing.T) {
 				"userID": "456",
 				"role":   "Reader",
 			},
-			mockSetup: func(repo *MockPostRepository) {
-				repo.On("GetPublishPosts", mock.Anything).
+			mockSetup: func(service *MockPostService) {
+				service.On("GetPublishPostsService", mock.Anything).
 					Return([]models.Post{
 						{
 							PostID:    "post2",
@@ -75,20 +75,16 @@ func TestGetPostsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
-			tt.mockSetup(mockPostRepo)
+			tt.mockSetup(mockPostService)
 
 			cfg := &config.Config{}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
@@ -109,11 +105,10 @@ func TestGetPostsHandler(t *testing.T) {
 			if tt.expectedStatus == http.StatusOK {
 				var response map[string]interface{}
 				json.Unmarshal(rr.Body.Bytes(), &response)
-				assert.Contains(t, response, "posts")
-				assert.Contains(t, response, "pagination")
+				assert.Contains(t, response, "Posts")
+				assert.Contains(t, response, "Pagination")
 			}
-
-			mockPostRepo.AssertExpectations(t)
+			mockPostService.AssertExpectations(t)
 		})
 	}
 }
@@ -191,20 +186,16 @@ func TestCreatePostHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
 			tt.mockSetup(mockPostService)
 
 			cfg := &config.Config{}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
@@ -229,6 +220,7 @@ func TestCreatePostHandler(t *testing.T) {
 			} else {
 				mockPostService.AssertNotCalled(t, "CreatePost", mock.Anything, mock.Anything)
 			}
+			mockPostService.AssertExpectations(t)
 		})
 	}
 }
@@ -275,20 +267,16 @@ func TestPublishPostHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
 			tt.mockSetup(mockPostService)
 
 			cfg := &config.Config{}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
@@ -317,7 +305,7 @@ func TestAddedImageHandler(t *testing.T) {
 		name           string
 		urlPath        string
 		contextValues  map[string]interface{}
-		mockSetup      func(*MockPostService, *MockPostRepository)
+		mockSetup      func(*MockPostService)
 		expectedStatus int
 	}{
 		{
@@ -327,8 +315,8 @@ func TestAddedImageHandler(t *testing.T) {
 				"userID": "123",
 				"role":   "Author",
 			},
-			mockSetup: func(service *MockPostService, repo *MockPostRepository) {
-				repo.On("GetByID", mock.Anything, "post123").
+			mockSetup: func(service *MockPostService) {
+				service.On("GetPostByIDService", mock.Anything, "post123").
 					Return(&models.Post{
 						PostID:   "post123",
 						AuthorID: "123",
@@ -355,22 +343,18 @@ func TestAddedImageHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
-			tt.mockSetup(mockPostService, mockPostRepo)
+			tt.mockSetup(mockPostService)
 
 			cfg := &config.Config{
 				MaxUploadSize: 10 * 1024 * 1024, // 10MB
 			}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
@@ -406,13 +390,12 @@ func TestAddedImageHandler(t *testing.T) {
 				var response map[string]interface{}
 				err := json.Unmarshal(rr.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Contains(t, response, "imageId")
+				assert.Contains(t, response, "image_id")
 				assert.Contains(t, response, "imageUrl")
-				assert.Equal(t, "img123", response["imageId"])
-				assert.Equal(t, "post123", response["postId"])
+				assert.Equal(t, "img123", response["image_id"])
+				assert.Equal(t, "post123", response["post_id"])
 			}
 
-			mockPostRepo.AssertExpectations(t)
 			mockPostService.AssertExpectations(t)
 		})
 	}

@@ -68,9 +68,9 @@ func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if userRole == "Author" { // Returning the user posts
-		posts, err = h.PostRepo.GetByUserID(r.Context(), userID)
+		posts, err = h.PostService.GetPostByUserID(r.Context(), userID)
 	} else { // Returning the all posts
-		posts, err = h.PostRepo.GetPublishPosts(r.Context())
+		posts, err = h.PostService.GetPublishPostsService(r.Context())
 	}
 
 	if err != nil {
@@ -111,7 +111,7 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value("userID").(string)
 
 	// we receive a post on id
-	post, err := h.PostRepo.GetByID(r.Context(), postID)
+	post, err := h.PostService.GetPostByIDService(r.Context(), postID)
 	if post.Content != "Published" && post.AuthorID != userID {
 		WriteError(w, "Доступ запрещен", http.StatusForbidden)
 		return
@@ -294,7 +294,7 @@ func (h *Handlers) AddedImage(w http.ResponseWriter, r *http.Request) {
 
 	// we receive a post on id
 	postID := pathParts[3]
-	post, err := h.PostRepo.GetByID(r.Context(), postID)
+	post, err := h.PostService.GetPostByIDService(r.Context(), postID)
 	if err != nil {
 		WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -396,7 +396,7 @@ func (h *Handlers) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	imageID := pathParts[5]
 
 	// get post by id
-	post, err := h.PostRepo.GetByID(r.Context(), postID)
+	post, err := h.PostService.GetPostByIDService(r.Context(), postID)
 	if err != nil {
 		WriteError(w, err.Error(), http.StatusInternalServerError)
 		return

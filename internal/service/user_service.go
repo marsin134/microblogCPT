@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"microblogCPT/internal/config"
+	"microblogCPT/internal/models"
 	"microblogCPT/internal/repository"
 )
 
 type UserService interface {
+	GetUserByIDService(ctx context.Context, userID string) (*models.User, error)
 	UpdateUser(ctx context.Context, req repository.UpdateUserRequest) error
 	DeleteUser(ctx context.Context, userID string) error
 }
@@ -21,6 +23,15 @@ func NewUserService(userRepo repository.UserRepository, cfg *config.Config) User
 		userRepo: userRepo,
 		cfg:      cfg,
 	}
+}
+
+func (s *userService) GetUserByIDService(ctx context.Context, userID string) (*models.User, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (s *userService) UpdateUser(ctx context.Context, req repository.UpdateUserRequest) error {

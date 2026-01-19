@@ -44,7 +44,7 @@ func (h *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.UserRepo.GetUserByID(r.Context(), userID)
+	user, err := h.UserService.GetUserByIDService(r.Context(), userID)
 	if err != nil {
 		WriteError(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -177,7 +177,7 @@ func (h *Handlers) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get user by id
-	user, err := h.UserRepo.GetUserByID(r.Context(), userID)
+	user, err := h.UserService.GetUserByIDService(r.Context(), userID)
 	if err != nil {
 		WriteError(w, err.Error(), http.StatusUnauthorized)
 		return

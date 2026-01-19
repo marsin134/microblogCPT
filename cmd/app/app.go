@@ -9,7 +9,7 @@ import (
 	"microblogCPT/internal/storage"
 )
 
-func App(cfg *config.Config) (*database.DB, *repository.Repository, *service.Service) {
+func App(cfg *config.Config) (*database.DB, *service.Service) {
 	// connection DB
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
@@ -27,5 +27,5 @@ func App(cfg *config.Config) (*database.DB, *repository.Repository, *service.Ser
 
 	services := service.NewService(repo, cfg, minioClient)
 
-	return db, repo, services
+	return db, services
 }

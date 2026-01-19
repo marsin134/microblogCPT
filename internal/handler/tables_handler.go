@@ -15,7 +15,7 @@ func (h *Handlers) TablesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, err := h.TablesService.GetCountTablesBD(h.TablesRepo)
+	count, err := h.TablesService.GetCountTablesBD()
 	if err != nil {
 		WriteError(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -4,7 +4,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"microblogCPT/internal/config"
 	handlers "microblogCPT/internal/handler"
-	"microblogCPT/internal/repository"
 	"microblogCPT/internal/service"
 	"testing"
 )
@@ -12,16 +11,9 @@ import (
 func TestNewHandlers(t *testing.T) {
 	// create mock object
 	mockUserService := new(MockUserService)
-	mockUserRepo := new(MockUserRepository)
 	mockAuthService := new(MockAuthService)
 	mockPostService := new(MockPostService)
-	mockPostRepo := new(MockPostRepository)
 	cfg := &config.Config{}
-
-	repo := &repository.Repository{
-		User: mockUserRepo,
-		Post: mockPostRepo,
-	}
 
 	service := &service.Service{
 		User: mockUserService,
@@ -29,13 +21,11 @@ func TestNewHandlers(t *testing.T) {
 		Auth: mockAuthService,
 	}
 
-	handler := handlers.NewHandlers(repo, service, cfg)
+	handler := handlers.NewHandlers(service, cfg)
 
 	assert.NotNil(t, handler.UserService)
-	assert.NotNil(t, handler.UserRepo)
 	assert.NotNil(t, handler.AuthService)
 	assert.NotNil(t, handler.PostService)
-	assert.NotNil(t, handler.PostRepo)
 	assert.NotNil(t, handler.Cfg)
 	assert.NotNil(t, handler.Validate)
 }

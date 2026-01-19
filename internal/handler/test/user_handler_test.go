@@ -20,7 +20,7 @@ func TestGetCurrentUserHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		contextValues  map[string]interface{}
-		mockSetup      func(*MockUserRepository)
+		mockSetup      func(service *MockUserService)
 		expectedStatus int
 	}{
 		{
@@ -28,8 +28,8 @@ func TestGetCurrentUserHandler(t *testing.T) {
 			contextValues: map[string]interface{}{
 				"userID": "123",
 			},
-			mockSetup: func(repo *MockUserRepository) {
-				repo.On("GetUserByID", mock.Anything, "123").
+			mockSetup: func(service *MockUserService) {
+				service.On("GetUserByIDService", mock.Anything, "123").
 					Return(&models.User{
 						UserID: "123",
 						Email:  "test@example.com",
@@ -41,7 +41,7 @@ func TestGetCurrentUserHandler(t *testing.T) {
 		{
 			name:           "Пользователь не аутентифицирован",
 			contextValues:  map[string]interface{}{},
-			mockSetup:      func(repo *MockUserRepository) {},
+			mockSetup:      func(service *MockUserService) {},
 			expectedStatus: http.StatusUnauthorized,
 		},
 		{
@@ -49,8 +49,8 @@ func TestGetCurrentUserHandler(t *testing.T) {
 			contextValues: map[string]interface{}{
 				"userID": "999",
 			},
-			mockSetup: func(repo *MockUserRepository) {
-				repo.On("GetUserByID", mock.Anything, "999").
+			mockSetup: func(service *MockUserService) {
+				service.On("GetUserByID", mock.Anything, "999").
 					Return((*models.User)(nil), assert.AnError)
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -60,20 +60,16 @@ func TestGetCurrentUserHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
-			tt.mockSetup(mockUserRepo)
+			tt.mockSetup(mockUserService)
 
 			cfg := &config.Config{}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
@@ -90,7 +86,6 @@ func TestGetCurrentUserHandler(t *testing.T) {
 			handler.GetCurrentUser(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
-			mockUserRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -100,7 +95,7 @@ func TestGetUserHandler(t *testing.T) {
 		name           string
 		urlPath        string
 		contextValues  map[string]interface{}
-		mockSetup      func(*MockUserRepository)
+		mockSetup      func(service *MockUserService)
 		expectedStatus int
 	}{
 		{
@@ -110,8 +105,8 @@ func TestGetUserHandler(t *testing.T) {
 				"userID": "123",
 				"role":   "Author",
 			},
-			mockSetup: func(repo *MockUserRepository) {
-				repo.On("GetUserByID", mock.Anything, "456").
+			mockSetup: func(service *MockUserService) {
+				service.On("GetUserByIDService", mock.Anything, "456").
 					Return(&models.User{
 						UserID: "456",
 						Email:  "other@example.com",
@@ -127,8 +122,8 @@ func TestGetUserHandler(t *testing.T) {
 				"userID": "123",
 				"role":   "Reader",
 			},
-			mockSetup: func(repo *MockUserRepository) {
-				repo.On("GetUserByID", mock.Anything, "123").
+			mockSetup: func(service *MockUserService) {
+				service.On("GetUserByID", mock.Anything, "123").
 					Return(&models.User{
 						UserID: "123",
 						Email:  "test@example.com",
@@ -144,7 +139,7 @@ func TestGetUserHandler(t *testing.T) {
 				"userID": "123",
 				"role":   "Reader",
 			},
-			mockSetup:      func(repo *MockUserRepository) {},
+			mockSetup:      func(service *MockUserService) {},
 			expectedStatus: http.StatusForbidden,
 		},
 	}
@@ -152,20 +147,16 @@ func TestGetUserHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
-			tt.mockSetup(mockUserRepo)
+			tt.mockSetup(mockUserService)
 
 			cfg := &config.Config{}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
@@ -182,7 +173,6 @@ func TestGetUserHandler(t *testing.T) {
 			handler.GetUser(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
-			mockUserRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -246,20 +236,16 @@ func TestUpdateUserHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthService := new(MockAuthService)
-			mockUserRepo := new(MockUserRepository)
 			mockUserService := new(MockUserService)
 			mockPostService := new(MockPostService)
-			mockPostRepo := new(MockPostRepository)
 
 			tt.mockSetup(mockUserService)
 
 			cfg := &config.Config{}
 			handler := &handlers.Handlers{
 				UserService: mockUserService,
-				UserRepo:    mockUserRepo,
 				AuthService: mockAuthService,
 				PostService: mockPostService,
-				PostRepo:    mockPostRepo,
 				Cfg:         cfg,
 				Validate:    validator.New(),
 			}
